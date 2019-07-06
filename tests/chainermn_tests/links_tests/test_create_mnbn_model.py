@@ -2,6 +2,7 @@ import unittest
 
 import chainer
 import chainermn
+from chainer.testing import attr
 
 
 class BnChain(chainer.Chain):
@@ -71,3 +72,20 @@ class TestCreateMnBnModel(unittest.TestCase):
             isinstance(mnbn_model[1],
                        chainermn.links.MultiNodeBatchNormalization))
         self.assertTrue(mnbn_model[2] == chainer.functions.relu)
+
+    @attr.gpu
+    def test_create_mnbn_model_sequential_initialize_gpu(self):
+        size = 3
+        model = chainer.Sequential(
+            chainer.links.Convolution2D(
+                None, size, 1, 1, 1, nobias=True),
+            chainer.links.BatchNormalization(size),
+            chainer.functions.relu
+        )
+        mnbn_model = chainermn.links.create_mnbn_model(model,
+                                                       self.communicator)
+
+        mnbn_model.to_gpu(device=0)
+        with chainer.using_device(mnbn_model.device):
+            x = mnbn_model.xp.zeros((1,1,1,1))
+            mnbn_model(x)
